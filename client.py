@@ -40,9 +40,21 @@ def receive():
 # --- ШРИФТИ ---
 font_win = font.Font(None, 72)
 font_main = font.Font(None, 36)
+
 # --- ЗОБРАЖЕННЯ ----
+def load_image_safe(path, size=None):
+    try:
+        img = image.load(path)
+        if size:
+            img = transform.scale(img, size)
+        return img.convert_alpha()
+    exept:
+        print(f"! Не вдалось завантажити {path}")
+        return None
 bg_img = image.load('images/backgrounds/game_bg.jpg')
 bg_img = transform.scale(bg_img, (800, 600))
+win_bg = load_image_safe('images/backgrounds/goose.jpg')
+
 # --- ЗВУКИ ---
 
 # --- ГРА ---
