@@ -12,9 +12,23 @@ COUNTDOWN_START = 3
 class GameServer:
     def __init__(self, host='localhost', port=8080):
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.server.bind((host, port))
-        self.server.listen(2)
-        print("🎮 Server started")
+        # Дозволяємо повторне використання адреси
+        self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            self.server.bind((host, port))
+            self.server.listen(2)
+            print(f"🎮 Server started on {host}:{port}")
+        except OSError as e:
+            if e.winerror == 10048:
+                print(f"❌ Порт {port} вже зайнятий!")
+                print("💡 Спробуйте:")
+                print("   1. Закрити попередню версію сервера")
+                print("   2. Змінити порт в коді")
+                print("   3. Почекати кілька секунд і спробувати знову")
+                input("Натисніть Enter для виходу...")
+                exit(1)
+            else:
+                raise e
 
         self.clients = {0: None, 1: None}
         self.connected = {0: False, 1: False}
@@ -126,24 +140,36 @@ class GameServer:
             threading.Thread(target=self.handle_client, args=(pid,), daemon=True).start()
 
     def run(self):
-        while True:
-            self.accept_players()
-            self.reset_game_state()
-            threading.Thread(target=self.ball_logic, daemon=True).start()
+        try:
+            while True:
+                self.accept_players()
+                self.reset_game_state()
+                threading.Thread(target=self.ball_logic, daemon=True).start()
 
-            while not self.game_over and all(self.connected.values()):
-                time.sleep(0.1)
+                while not self.game_over and all(self.connected.values()):
+                    time.sleep(0.1)
 
-            print(f"Гравець {self.winner} переміг!")
-            time.sleep(5)
+                print(f"Гравець {self.winner} переміг!")
+                time.sleep(5)
 
-            # Закриваємо старі з'єднання
-            for pid in [0, 1]:
-                try:
-                    self.clients[pid].close()
-                except:
-                    pass
-                self.clients[pid] = None
-                self.connected[pid] = False
+                # Закриваємо старі з'єднання
+                for pid in [0, 1]:
+                    try:
+                        self.clients[pid].close()
+                    except:
+                        pass
+                    self.clients[pid] = None
+                    self.connected[pid] = False
+        except KeyboardInterrupt:
+            print("\n👋 Сервер зупинено користувачем")
+        except Exception as e:
+            print(f"❌ Помилка сервера: {e}")
+        finally:
+            print("🔧 Закриваю сервер...")
+            try:
+                self.server.close()
+            except:
+                pass
 
-GameServer().run()
+if __name__ == "__main__":
+    GameServer().run()
